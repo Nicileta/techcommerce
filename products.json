@@ -1,0 +1,50 @@
+[
+  {
+    "id": 1,
+    "name": "Laptop Lenovo ThinkPad",
+    "category": "Laptopuri",
+    "price": 4299,
+    "quantity": 7,
+    "status": "available"
+  },
+  {
+    "id": 2,
+    "name": "Mouse Logitech MX Master 3S",
+    "category": "Periferice",
+    "price": 549,
+    "quantity": 14,
+    "status": "available"
+  },
+  {
+    "id": 3,
+    "name": "Monitor Dell UltraSharp 27\"",
+    "category": "Monitoare",
+    "price": 1899,
+    "quantity": 5,
+    "status": "available"
+  },
+  {
+    "id": 4,
+    "name": "Tastatura mecanica Keychron K8",
+    "category": "Periferice",
+    "price": 429,
+    "quantity": 9,
+    "status": "available"
+  },
+  {
+    "id": 5,
+    "name": "Telefon Samsung Galaxy S",
+    "category": "Telefoane",
+    "price": 3899,
+    "quantity": 0,
+    "status": "out_of_stock"
+  },
+  {
+    "id": 6,
+    "name": "Placa video NVIDIA GeForce RTX",
+    "category": "Componente PC",
+    "price": 3199,
+    "quantity": 3,
+    "status": "available"
+  }
+]
