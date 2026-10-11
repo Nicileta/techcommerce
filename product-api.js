@@ -41,6 +41,7 @@
 
   window.productApi = {
     getAll: () => request(API_URL),
+    getById: (id) => request(`${API_URL}/${encodeURIComponent(id)}`),
     create: (product) => request(API_URL, {
       method: 'POST',
       body: JSON.stringify(product)

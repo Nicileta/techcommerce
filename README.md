@@ -23,3 +23,17 @@ Serverul permite cereri din `file://` și de pe origini HTTP locale (`localhost`
 Corpurile POST și PUT sunt JSON și conțin `name`, `category`, `price`, `quantity` și `status`. Serverul validează datele și răspunde cu coduri HTTP potrivite (`201`, `400`, `404`, `405`, `413`, `500`) și un mesaj JSON pentru erori.
 
 Frontend-ul folosește funcțiile din `product-api.js`; erorile de rețea, răspunsurile HTTP nereușite și JSON-ul invalid sunt afișate în interfață.
+
+## Navigarea frontend
+
+Aplicația folosește hash routing, astfel încât navigarea client-side funcționează și când deschizi `index.html` direct sau prin Live Server, fără reîncărcare de pagină.
+
+| Rută | Ecran |
+| --- | --- |
+| `#/` | Pagina principală |
+| `#/products` | Catalog, formularul CRUD și filtre |
+| `#/products/:id` | Detaliile produsului; `id` este extras din rută și folosit pentru `GET /api/products/:id` |
+| `#/about` | Despre aplicație |
+| orice rută necunoscută | Ecran 404 |
+
+Catalogul folosește query parameters pentru căutare, categorie și sortare, de exemplu `index.html#/products?search=laptop&category=Laptopuri&sort=price-asc`. Linkul către un produs folosește parametrul de rută, de exemplu `#/products/1`.

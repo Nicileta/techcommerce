@@ -16,10 +16,16 @@
         </div>
       </header>
 
+      <nav class="main-nav" aria-label="Navigare principală">
+        <a href="#/">Acasă</a>
+        <a href="#/products">Produse</a>
+        <a href="#/about">Despre</a>
+      </nav>
+
       <main class="layout">
         <p id="appMessage" class="app-message" role="status" aria-live="polite" hidden></p>
 
-        <section class="panel form-panel">
+        <section class="panel form-panel" id="productFormPanel">
           <h2 id="formTitle">Adăugare produs</h2>
 
           <form id="productForm">
@@ -61,10 +67,19 @@
           </form>
         </section>
 
-        <section class="panel list-panel">
+        <section class="panel list-panel" id="productListPanel">
           <div class="list-header">
             <h2>Produse</h2>
             <input id="searchInput" type="search" placeholder="Caută produs..." />
+            <select id="categoryFilter" aria-label="Filtrează după categorie">
+              <option value="">Toate categoriile</option>
+            </select>
+            <select id="sortSelect" aria-label="Sortează produsele">
+              <option value="">Ordine implicită</option>
+              <option value="name">Nume A–Z</option>
+              <option value="price-asc">Preț crescător</option>
+              <option value="price-desc">Preț descrescător</option>
+            </select>
           </div>
           <button type="button" class="secondary-btn retry-btn" id="retryButton" hidden>Reîncearcă încărcarea</button>
 
@@ -84,9 +99,12 @@
             </table>
           </div>
         </section>
+
+        <section class="panel route-page" id="routePage" hidden></section>
       </main>
     </div>
 
+    <script src="router.js"></script>
     <script src="product-api.js"></script>
     <script src="script.js"></script>
   </body>

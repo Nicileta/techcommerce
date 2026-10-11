@@ -6,10 +6,17 @@ const tableBody = document.getElementById('productTableBody');
 const resetFormBtn = document.getElementById('resetFormBtn');
 const appMessage = document.getElementById('appMessage');
 const retryButton = document.getElementById('retryButton');
+const sortSelect = document.getElementById('sortSelect');
+const categoryFilter = document.getElementById('categoryFilter');
+const routePage = document.getElementById('routePage');
+const formPanel = document.getElementById('productFormPanel');
+const listPanel = document.getElementById('productListPanel');
 const submitButton = form.querySelector('button[type="submit"]');
 
 let products = [];
 let editingId = null;
+let routeRequestId = 0;
+let productLoadError = null;
 
 function showMessage(message, type = '') {
   appMessage.textContent = message;
@@ -51,11 +58,22 @@ function createActionButton(label, action, id, className) {
 }
 
 function renderProducts() {
-  const searchTerm = searchInput.value.trim().toLocaleLowerCase();
-  const filteredProducts = products.filter((product) =>
-    product.name.toLocaleLowerCase().includes(searchTerm)
-    || product.category.toLocaleLowerCase().includes(searchTerm)
-  );
+  const query = window.appRouter.getLocation().query;
+  const searchTerm = (query.get('search') || '').trim().toLocaleLowerCase();
+  const category = query.get('category') || '';
+  const sort = query.get('sort') || '';
+  const filteredProducts = products
+    .filter((product) =>
+      (product.name.toLocaleLowerCase().includes(searchTerm)
+        || product.category.toLocaleLowerCase().includes(searchTerm))
+      && (!category || product.category === category)
+    )
+    .sort((first, second) => {
+      if (sort === 'name') return first.name.localeCompare(second.name, 'ro');
+      if (sort === 'price-asc') return first.price - second.price;
+      if (sort === 'price-desc') return second.price - first.price;
+      return first.id - second.id;
+    });
 
   tableBody.replaceChildren();
 
@@ -89,6 +107,7 @@ function renderProducts() {
     const actions = document.createElement('div');
     actions.className = 'row-actions';
     actions.append(
+      createActionButton('Detalii', 'view', product.id, 'edit-btn'),
       createActionButton('Edit', 'edit', product.id, 'edit-btn'),
       createActionButton('Delete', 'delete', product.id, 'delete-btn')
     );
@@ -98,9 +117,22 @@ function renderProducts() {
   });
 }
 
+function renderCategoryOptions(selectedCategory = '') {
+  const categories = [...new Set(products.map((product) => product.category))]
+    .sort((first, second) => first.localeCompare(second, 'ro'));
+  categoryFilter.replaceChildren(new Option('Toate categoriile', ''));
+  categories.forEach((category) => {
+    categoryFilter.add(new Option(category, category));
+  });
+  categoryFilter.value = categories.includes(selectedCategory) ? selectedCategory : '';
+}
+
 async function loadProducts() {
   retryButton.hidden = true;
-  showMessage('Se încarcă produsele din API...');
+  productLoadError = null;
+  if (window.appRouter.getLocation().name === 'products') {
+    showMessage('Se încarcă produsele din API...');
+  }
 
   try {
     const data = await window.productApi.getAll();
@@ -108,12 +140,21 @@ async function loadProducts() {
       throw new Error('Răspunsul API pentru lista de produse nu are formatul așteptat.');
     }
     products = data;
-    renderProducts();
-    showMessage('');
+    productLoadError = null;
+    if (window.appRouter.getLocation().name === 'products') {
+      renderProducts();
+      showMessage('');
+      renderCategoryOptions(categoryFilter.value);
+      retryButton.hidden = true;
+      return;
+    }
   } catch (error) {
     console.error('Eroare la încărcarea produselor:', error);
-    showMessage(error.message, 'error');
-    retryButton.hidden = false;
+    productLoadError = error.message;
+    if (window.appRouter.getLocation().name === 'products') {
+      showMessage(error.message, 'error');
+      retryButton.hidden = false;
+    }
   }
 }
 
@@ -208,6 +249,11 @@ async function handleTableClick(event) {
     return;
   }
 
+  if (button.dataset.action === 'view') {
+    window.appRouter.navigate(`/products/${product.id}`);
+    return;
+  }
+
   if (button.dataset.action !== 'delete') return;
   if (!window.confirm(`Sigur vrei să ștergi produsul "${product.name}"?`)) return;
 
@@ -226,11 +272,154 @@ async function handleTableClick(event) {
   }
 }
 
+function setProductsQuery() {
+  window.appRouter.navigate('/products', {
+    search: searchInput.value.trim(),
+    category: categoryFilter.value,
+    sort: sortSelect.value
+  }, true);
+}
+
+function createRouteLink(label, path, className = 'primary-btn') {
+  const link = document.createElement('a');
+  link.className = className;
+  link.href = `#${path}`;
+  link.textContent = label;
+  return link;
+}
+
+function showRoutePage() {
+  formPanel.hidden = true;
+  listPanel.hidden = true;
+  routePage.hidden = false;
+  routePage.replaceChildren();
+}
+
+function showProductsPage(location) {
+  routePage.hidden = true;
+  formPanel.hidden = false;
+  listPanel.hidden = false;
+  searchInput.value = location.query.get('search') || '';
+  sortSelect.value = location.query.get('sort') || '';
+  renderCategoryOptions(location.query.get('category') || '');
+  renderProducts();
+  if (productLoadError) {
+    showMessage(productLoadError, 'error');
+    retryButton.hidden = false;
+  }
+}
+
+function appendHeading(container, text) {
+  const heading = document.createElement('h2');
+  heading.textContent = text;
+  container.append(heading);
+}
+
+async function showProductDetails(location, requestId) {
+  showRoutePage();
+  appendHeading(routePage, 'Detalii produs');
+  const loading = document.createElement('p');
+  loading.textContent = 'Se încarcă detaliile produsului...';
+  routePage.append(loading);
+
+  const id = Number(location.params.id);
+  if (!Number.isSafeInteger(id) || id < 1) {
+    routePage.replaceChildren();
+    appendHeading(routePage, 'Produs inexistent');
+    routePage.append(createRouteLink('Înapoi la produse', '/products'));
+    return;
+  }
+
+  try {
+    const product = await window.productApi.getById(id);
+    if (requestId !== routeRequestId) return;
+
+    routePage.replaceChildren();
+    appendHeading(routePage, product.name);
+    const details = document.createElement('dl');
+    details.className = 'detail-grid';
+    [
+      ['Categorie', product.category],
+      ['Preț', `${Number(product.price).toFixed(2)} lei`],
+      ['Cantitate', String(product.quantity)],
+      ['Status', getStatusLabel(product.status)]
+    ].forEach(([label, value]) => {
+      const term = document.createElement('dt');
+      term.textContent = label;
+      const description = document.createElement('dd');
+      description.textContent = value;
+      details.append(term, description);
+    });
+    routePage.append(details, createRouteLink('Înapoi la produse', '/products', 'secondary-btn'));
+  } catch (error) {
+    if (requestId !== routeRequestId) return;
+    console.error('Eroare la încărcarea detaliilor produsului:', error);
+    routePage.replaceChildren();
+    appendHeading(routePage, 'Nu s-au putut încărca detaliile');
+    const message = document.createElement('p');
+    message.textContent = error.message;
+    routePage.append(message, createRouteLink('Înapoi la produse', '/products', 'secondary-btn'));
+  }
+}
+
+function renderRoute(location) {
+  const requestId = ++routeRequestId;
+  const currentPage = location.name === 'productDetails'
+    ? 'products'
+    : (location.name === 'notFound' ? '' : location.name);
+  document.querySelectorAll('.main-nav a').forEach((link) => {
+    const page = link.hash.slice(2) || 'home';
+    if (page === currentPage) {
+      link.setAttribute('aria-current', 'page');
+    } else {
+      link.removeAttribute('aria-current');
+    }
+  });
+
+  showMessage('');
+  retryButton.hidden = true;
+
+  if (location.name === 'products') {
+    showProductsPage(location);
+    return;
+  }
+
+  if (location.name === 'productDetails') {
+    showProductDetails(location, requestId);
+    return;
+  }
+
+  showRoutePage();
+  if (location.name === 'home') {
+    appendHeading(routePage, 'Bun venit la Tech Commerce');
+    const intro = document.createElement('p');
+    intro.textContent = 'Explorează produsele tech și gestionează catalogul magazinului.';
+    routePage.append(intro, createRouteLink('Vezi produsele', '/products'));
+    return;
+  }
+
+  if (location.name === 'about') {
+    appendHeading(routePage, 'Despre Tech Commerce');
+    const intro = document.createElement('p');
+    intro.textContent = 'Miniaplicație de magazin tech. Catalogul este gestionat printr-un API REST local.';
+    routePage.append(intro, createRouteLink('Vezi produsele', '/products'));
+    return;
+  }
+
+  appendHeading(routePage, '404 — Pagina nu a fost găsită');
+  const message = document.createElement('p');
+  message.textContent = `Ruta „${location.path}” nu există.`;
+  routePage.append(message, createRouteLink('Înapoi la pagina principală', '/'));
+}
+
 form.addEventListener('submit', handleSubmit);
-searchInput.addEventListener('input', renderProducts);
+searchInput.addEventListener('input', setProductsQuery);
+categoryFilter.addEventListener('change', setProductsQuery);
+sortSelect.addEventListener('change', setProductsQuery);
 resetFormBtn.addEventListener('click', resetForm);
 tableBody.addEventListener('click', handleTableClick);
 retryButton.addEventListener('click', loadProducts);
 
 resetForm();
+window.appRouter.subscribe(renderRoute);
 loadProducts();
